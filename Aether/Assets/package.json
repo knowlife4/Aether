@@ -1,0 +1,21 @@
+{
+    "name": "com.slice.aether",
+    "version": "0.0.1",
+    "displayName": "Aether- Atmospheric Volumetric Fog",
+    "description": "TODO",
+    "unity": "2022.2",
+    "unityRelease": "0f1",
+    "author": 
+    {
+        "name": "SLICE Interactive",
+        "email": "slice.interactive.games@gmail.com"
+    },
+    "samples": 
+    [
+        {
+            "displayName": "Multi-Light",
+            "description": "TODO",
+            "path": "Samples/MultiLight"
+        }
+    ]
+}

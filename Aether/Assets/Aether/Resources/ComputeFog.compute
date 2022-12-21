@@ -1,0 +1,183 @@
+#pragma kernel ComputeFog
+
+struct LightData
+{
+    float3 position;
+    float3 direction;
+    float3 color;
+    float intensity;
+    float angle;
+    int type;
+};
+
+struct CameraData
+{
+    float3 position;
+    float4x4 inverseViewMatrix;
+    float aspect;
+    float fov;
+    float near;
+    float far;
+};
+
+struct FogData
+{
+    float4x4 trs;
+    float density;
+    float scattering;
+    float absorption;
+    float phaseFactor;
+};
+
+StructuredBuffer<LightData> lightData;
+uint lightDataLength;
+
+StructuredBuffer<FogData> fogData;
+uint fogDataLength;
+
+StructuredBuffer<CameraData> cameraData;
+
+RWTexture3D<float4> fogTexture;
+float3 fogTextureResolution;
+
+float time;
+
+float4 GetRayDirection (uint3 id, CameraData camData)
+{
+    float x = (id.x / fogTextureResolution.x) * camData.aspect * 2.0 - camData.aspect;
+    float y = (id.y / fogTextureResolution.y) * 2.0 - 1.0;
+    float z = -(1.0 / tan(radians(camData.fov) / 2.0));
+    return normalize(float4(x, y, z, 0.0));
+}
+
+float3 GetWorldPosition(uint3 id, CameraData camData)
+{
+    float4 rayDir = GetRayDirection(id, camData);
+
+    // Transform ray direction to world space
+    float3 worldRayDir = mul(camData.inverseViewMatrix, rayDir).xyz;
+
+    // Calculate distance to intersection with near/far planes
+    float t = id.z / (fogTextureResolution.z - 1);
+    float distance = (camData.near / abs(rayDir.z)) + t * (camData.far / abs(rayDir.z));
+
+    // Return intersection point in world space
+    return camData.position + normalize(worldRayDir) * distance;
+}
+
+float3 PointLight (int lightId, float3 worldPos)
+{
+    LightData data = lightData[lightId];
+
+    // Calculate the distance and attenuation based on the distance from the light to the world position
+    float distance = max(0.0, length(data.position - worldPos));
+    float attenuation = 1.0 / (1.0 + 0.12 * distance + 1 * distance * distance);
+
+    // Calculate the intensity of the light at the world position based on the light's intensity and attenuation
+    float intensity = data.intensity * 100.0 * attenuation;
+
+    // Return the final color of the light at the world position
+    return data.color * intensity;
+}
+
+float3 SpotLight(int lightId, float3 worldPos)
+{
+    LightData data = lightData[lightId];
+
+    float3 adjustedPos = worldPos += data.direction;
+
+    // Calculate the distance and attenuation based on the distance from the light to the world position
+    float distance = max(0.0, length(data.position - worldPos));
+    float attenuation = 1.0 / (1.0 + 0.01 * distance + 0.1 * distance * distance);
+
+    // Calculate the angle between the direction of the light and the direction from the light to the world position
+    float angle = data.angle / 2.0;
+    float inner = angle - 10.0;
+    float outer = angle + 5.0;
+
+    // Calculate the intensity of the light at the world position based on the light's intensity and attenuation, and the angle between the light's direction and the direction from the light to the world position
+    float intensity = data.intensity * 300.0 * attenuation * saturate((dot(data.direction, normalize(worldPos - data.position)) - cos(radians(outer))) / (cos(radians(inner)) - cos(radians(outer))));
+
+    // Return the final color of the light at the world position
+    return data.color * intensity;
+}
+
+float3 DirectionalLight(int lightId, float3 worldPos)
+{
+    LightData data = lightData[lightId];
+
+    // Calculate the intensity of the light at the world position based on the light's intensity
+    float intensity = data.intensity * 5.0;
+
+    // Return the final color of the light at the world position
+    return data.color * intensity;
+}
+
+float Phase(float3 v, float3 l, float g) 
+{
+	float g2 = g * g;
+	return (1.0 / (4.0 * 3.14159)) * ((1.0 - g2) / pow(abs(1.0 + g2 - 2.0 * g * max(0.0, dot(v, l))), 1.5));
+}
+
+float nrand(float3 uv)
+{
+    return frac(sin(dot(uv, float3(12.9898, 78.233, 3.14159))) * 43758.5453);
+}
+
+float4 Sample (float3 worldPos)
+{
+    float layerThickness = 0.05;
+	float dustDensity = 0.05;
+	float scattering = 0.5 * dustDensity * layerThickness;
+	float absorption = 0.35 * dustDensity * layerThickness;
+
+    float3 viewDirection = normalize(cameraData[0].position - worldPos);
+
+    float3 lightColor = 0;
+    for(uint i = 0; i < lightDataLength; i++)
+    {
+        LightData light = lightData[i];
+
+        float3 lightDirection = normalize(worldPos - light.position);
+        
+        float3 lightOut = 0;
+        switch(light.type)
+        {
+            case 0: //Spot
+                lightOut = SpotLight(i, worldPos) * Phase(viewDirection, lightDirection, .7);
+            break;
+
+            case 1: //Directional
+                lightOut = DirectionalLight(i, worldPos);
+            break;
+
+            case 2: //Point
+                lightOut = PointLight(i, worldPos) * Phase(viewDirection, lightDirection, .8);
+            break;
+        }
+
+        lightColor += lightOut;
+    }
+
+    return float4(lightColor * scattering, scattering + absorption);
+}
+
+[numthreads(16, 8, 8)]
+void ComputeFog (uint3 id : SV_DispatchThreadID)
+{
+    uint sampleCount = 5;
+
+    float3 worldPos = GetWorldPosition(id, cameraData[0]);
+
+    float4 sum = float4(0, 0, 0, 0);
+    for(uint i = 0; i < sampleCount; i++)
+    {
+        float3 offset = mul(cameraData[0].inverseViewMatrix, GetRayDirection(id, cameraData[0])).xyz * i;
+
+        float3 samplePos = worldPos + (offset + (nrand(worldPos * offset * time) * .05));
+        
+        sum += Sample(samplePos);
+    }
+
+    fogTexture[id] = (sum / sampleCount);
+}

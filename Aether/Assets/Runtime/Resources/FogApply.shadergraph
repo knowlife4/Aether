@@ -776,10 +776,10 @@
 {
     "m_SGVersion": 0,
     "m_Type": "UnityEditor.Rendering.Fullscreen.ShaderGraph.FullscreenData",
-    "m_ObjectId": "3497d6c671524f60b14031e49ea53955",
+    "m_ObjectId": "357f42f50a344ea7a39324201b649252",
     "m_Version": 0,
     "m_fullscreenMode": 0,
-    "m_BlendMode": 1,
+    "m_BlendMode": 3,
     "m_SrcColorBlendMode": 0,
     "m_DstColorBlendMode": 1,
     "m_ColorBlendOperation": 0,
@@ -2159,7 +2159,7 @@
     "m_ObjectId": "f7cdb387943545049f78ceccc4faf617",
     "m_Datas": [
         {
-            "m_Id": "3497d6c671524f60b14031e49ea53955"
+            "m_Id": "357f42f50a344ea7a39324201b649252"
         }
     ],
     "m_ActiveSubTarget": {

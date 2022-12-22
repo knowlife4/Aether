@@ -11,7 +11,7 @@ float4 AccumulateScattering(float4 colorAndDensityFront, float4 colorAndDensityB
 }
 
 void WriteOutput(uint3 pos, float4 colorAndDensity) {
-	float4 finalValue = float4(colorAndDensity.rgb, exp(-colorAndDensity.a));
+	float4 finalValue = float4(colorAndDensity.rgb, saturate(exp(-colorAndDensity.a)));
 	raymarchTexture[pos] = finalValue;
 }
 

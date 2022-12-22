@@ -225,6 +225,7 @@ namespace Aether
             FogCompute.SetVector("fogTextureResolution", new(Settings.volumeResolution.x, Settings.volumeResolution.y, Settings.volumeResolution.z));
 
             FogCompute.SetFloat("time", Time.unscaledTime);
+            FogCompute.SetInt("sampleCount", Settings.sampleCount);
 
             FogCompute.Dispatch(kernel, 20, 24, 32);
         }
@@ -243,6 +244,7 @@ namespace Aether
     public class AetherSettings
     {
         public int3 volumeResolution = new(160, 90, 128);
+        public int sampleCount = 5;
         public float viewDistance;
         public Material blitMaterial;
         public Texture blueNoise;
@@ -273,20 +275,24 @@ namespace Aether
     [System.Serializable]
     public struct FogData
     {
-        [HideInInspector] public Matrix4x4 trs;
+        public Matrix4x4 trs;
+        public Vector3 minimum, maximum;
+        public Vector3 color;
         public float density;
-        public float scattering;
-        public float absorption;
-        public float phaseFactor;
-        [HideInInspector] public int type;
+        public float scatterCoefficient;
+        public int type;
 
-        public const int SIZE = MATRIX4X4_SIZE + FLOAT_SIZE + FLOAT_SIZE + FLOAT_SIZE + FLOAT_SIZE + INT_SIZE;
+        public const int SIZE = MATRIX4X4_SIZE + (VECTOR3_SIZE * 2) + VECTOR3_SIZE + FLOAT_SIZE + FLOAT_SIZE + INT_SIZE;
 
         public void Update (AetherFog volume)
         {
-            this = volume.data;
             trs = Matrix4x4.TRS(volume.transform.position, volume.transform.rotation, volume.transform.localScale);
-            type = (int)volume.type;
+            minimum = volume.transform.position - (volume.transform.localScale/2);
+            maximum = volume.transform.position + (volume.transform.localScale/2);
+            color = new(volume.Color.r, volume.Color.g, volume.Color.b);
+            density = volume.Density;
+            scatterCoefficient = volume.ScatterCoefficient;
+            type = (int)volume.Type;
         }
     }
 

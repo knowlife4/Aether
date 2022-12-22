@@ -916,7 +916,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1446330646}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 4.29, y: 1.73, z: -39.42}
+  m_LocalPosition: {x: 5.03, y: 1.73, z: -39.33}
   m_LocalScale: {x: 17.952742, y: 12.722427, z: 15.448674}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -938,3 +938,4 @@ MonoBehaviour:
   Type: 0
   Color: {r: 1, g: 1, b: 1, a: 1}
   Density: 1
+  ScatterCoefficient: 0.288

@@ -107,6 +107,8 @@ float4 SampleFog (float3 worldPos, float3 viewDirection, out float scatterCoeffi
         fogColor += fogOut;
     }
 
+    scatterCoefficient = saturate(scatterCoefficient);
+
     return fogColor;
 }
 

@@ -55,7 +55,7 @@ namespace Aether
         public ComputeShader RaymarchCompute { get; }
     
 
-        Light[] lights;
+        AetherLight[] lights;
         LightData[] lightData;
         ComputeBuffer lightDataBuffer;
 
@@ -146,7 +146,7 @@ namespace Aether
 
         public void SetupLights ()
         {
-            lights = Object.FindObjectsOfType<Light>();
+            lights = Object.FindObjectsOfType<AetherLight>();
             lightData = new LightData[lights.Length];
             if(lightData.Length == 0) return;
 
@@ -227,7 +227,12 @@ namespace Aether
             FogCompute.SetFloat("time", Time.unscaledTime);
             FogCompute.SetInt("sampleCount", Settings.sampleCount);
 
-            FogCompute.Dispatch(kernel, 20, 24, 32);
+            uint3 threadGroups;
+            FogCompute.GetKernelThreadGroupSizes(kernel, out threadGroups.x, out threadGroups.y, out threadGroups.z);
+
+            int3 dispatchSize = (int3)math.ceil((float3)Settings.volumeResolution / (float3)threadGroups);
+
+            FogCompute.Dispatch(kernel, dispatchSize.x, dispatchSize.y, dispatchSize.z);
         }
 
         public void UpdateRaymarch ()
@@ -236,7 +241,15 @@ namespace Aether
 
             RaymarchCompute.SetTexture(kernel, "raymarchTexture", raymarchTexture);
             RaymarchCompute.SetTexture(kernel, "fogTexture", fogTexture);
-            RaymarchCompute.Dispatch(kernel, 10, 10, 1);
+
+            RaymarchCompute.SetInt("depthResolution", Settings.volumeResolution.z);
+
+            uint3 threadGroups;
+            RaymarchCompute.GetKernelThreadGroupSizes(kernel, out threadGroups.x, out threadGroups.y, out threadGroups.z);
+
+            int3 dispatchSize = (int3)math.ceil((float3)Settings.volumeResolution / (float3)threadGroups);
+
+            RaymarchCompute.Dispatch(kernel, dispatchSize.x, dispatchSize.y, 1);
         }
     }
 
@@ -261,10 +274,12 @@ namespace Aether
 
         public const int SIZE = VECTOR3_SIZE + VECTOR3_SIZE + VECTOR3_SIZE + FLOAT_SIZE + FLOAT_SIZE + INT_SIZE;
 
-        public void Update (Light light)
+        public void Update (AetherLight aetherLight)
         {
-            position = light.transform.position;
-            direction = light.transform.forward;
+            Light light = aetherLight.Light;
+
+            position = aetherLight.transform.position;
+            direction = aetherLight.transform.forward;
             color = new Vector3(light.color.r, light.color.g, light.color.b);
             intensity = light.intensity;
             angle = light.spotAngle;

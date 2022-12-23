@@ -189,7 +189,7 @@ float4 Sample (float3 worldPos, float3 viewDirection)
     return float4(light * fog.rgb * scattering, scattering + absorption);
 }
 
-[numthreads(16, 8, 8)]
+[numthreads(16, 9, 2)]
 void ComputeFog (uint3 id : SV_DispatchThreadID)
 {
     CameraData camera = cameraData[0];
@@ -197,12 +197,12 @@ void ComputeFog (uint3 id : SV_DispatchThreadID)
     float3 worldPos = GetWorldPosition(id, camera);
     float3 viewDirection = normalize(camera.position - worldPos);
 
+    float3 offset = mul(camera.inverseViewMatrix, GetRayDirection(id, camera)).xyz;
+
     float4 sum = 0;
     for(uint i = 0; i < sampleCount; i++)
     {
-        float3 offset = mul(camera.inverseViewMatrix, GetRayDirection(id, camera)).xyz * i;
-
-        float3 samplePos = worldPos + offset;
+        float3 samplePos = worldPos + (offset * i);
 
         sum += Sample(samplePos, viewDirection);
     }

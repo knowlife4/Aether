@@ -108,10 +108,11 @@ MonoBehaviour:
   m_Active: 1
   settings:
     volumeResolution:
-      x: 320
-      y: 180
+      x: 160
+      y: 90
       z: 128
-    viewDistance: 50
+    sampleCount: 5
+    viewDistance: 75
     blitMaterial: {fileID: 0}
     blueNoise: {fileID: 2800000, guid: 80d559b88b2f8b9489f5b371a9c6989a, type: 3}
   pass:

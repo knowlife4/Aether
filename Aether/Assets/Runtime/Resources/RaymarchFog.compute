@@ -4,6 +4,8 @@
 RWTexture3D<float4> raymarchTexture;
 Texture3D<float4> fogTexture;
 
+uint depthResolution;
+
 
 float4 AccumulateScattering(float4 colorAndDensityFront, float4 colorAndDensityBack) {
 	float3 light = colorAndDensityFront.rgb + saturate(exp(-colorAndDensityFront.a)) * colorAndDensityBack.rgb;
@@ -22,7 +24,8 @@ void RaymarchFog(uint3 id : SV_DispatchThreadID)
 	
 	WriteOutput(uint3(id.xy, 0), currentSliceValue);
 	
-	for (uint z = 1; z < 128; z++) {
+	for (uint z = 1; z < depthResolution; z++) 
+	{
 		uint3 volumePos = uint3(id.xy, z);
 
 		float4 nextValue = fogTexture[volumePos];

@@ -1,6 +1,12 @@
 #pragma kernel ComputeFog
 
-struct LightData
+#pragma multi_compile _ _MAIN_LIGHT_SHADOWS
+#pragma multi_compile _ _MAIN_LIGHT_SHADOWS_CASCADE
+
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+
+struct AetherLightData
 {
     float3 position;
     float3 direction;
@@ -20,7 +26,7 @@ struct CameraData
     float far;
 };
 
-struct FogData
+struct AetherFogData
 {
     float4x4 trs;
     float3 minimum;
@@ -36,10 +42,10 @@ float3 fogTextureResolution;
 
 StructuredBuffer<CameraData> cameraData;
 
-StructuredBuffer<FogData> fogData;
+StructuredBuffer<AetherFogData> fogData;
 uint fogDataLength;
 
-StructuredBuffer<LightData> lightData;
+StructuredBuffer<AetherLightData> lightData;
 uint lightDataLength;
 
 uint sampleCount;
@@ -67,7 +73,7 @@ float3 GetWorldPosition(uint3 id, CameraData camera)
     return camera.position + normalize(worldRayDir) * distance;
 }
 
-float4 LocalFog (FogData fog, float3 worldPos, out float scatterCoefficient)
+float4 LocalFog (AetherFogData fog, float3 worldPos, out float scatterCoefficient)
 {
     float3 s = step(fog.minimum, worldPos) - step(fog.maximum, worldPos);
     float dist = s.x * s.y * s.z;
@@ -77,7 +83,7 @@ float4 LocalFog (FogData fog, float3 worldPos, out float scatterCoefficient)
     return lerp(float4(0, 0, 0, 0), float4(fog.color, fog.density), dist);
 }
 
-float4 GlobalFog (FogData fog, float3 worldPos, out float scatterCoefficient)
+float4 GlobalFog (AetherFogData fog, float3 worldPos, out float scatterCoefficient)
 {
     scatterCoefficient = fog.scatterCoefficient;
     return float4(fog.color, fog.density);
@@ -89,7 +95,7 @@ float4 SampleFog (float3 worldPos, float3 viewDirection, out float scatterCoeffi
 
     for(uint fogID = 0; fogID < fogDataLength; fogID++)
     {
-        FogData fog = fogData[fogID];
+        AetherFogData fog = fogData[fogID];
 
         float4 fogOut = 0;
         float scatter = 0;
@@ -112,22 +118,29 @@ float4 SampleFog (float3 worldPos, float3 viewDirection, out float scatterCoeffi
     return fogColor;
 }
 
-float3 PointLight (LightData light, float3 worldPos)
+float3 PointLight (AetherLightData light, float3 worldPos)
 {
     float distance = max(0.0, length(light.position - worldPos));
     float attenuation = 1 / (1 + 0.12 * distance + 1 * distance * distance);
 
-    float intensity = light.intensity * attenuation * 100;
+    float intensity = light.intensity * attenuation * 10;
 
     return light.color * intensity;
 }
 
-float3 DirectionalLight(LightData light)
+float3 DirectionalLight(AetherLightData light, float3 worldPos)
 {
-    return light.color * light.intensity;
+    float attenuation = 1;
+
+    float4 shadowCoord = TransformWorldToShadowCoord(worldPos);
+	float ShadowAtten = MainLightRealtimeShadow(shadowCoord);
+
+    attenuation *= ShadowAtten > shadowCoord.z;
+
+    return light.color * light.intensity * attenuation;
 }
 
-float3 SpotLight(LightData light, float3 worldPos)
+float3 SpotLight(AetherLightData light, float3 worldPos)
 {
     float3 adjustedPos = worldPos += light.direction;
 
@@ -138,15 +151,20 @@ float3 SpotLight(LightData light, float3 worldPos)
     float inner = angle - 10.0;
     float outer = angle + 5.0;
 
-    float intensity = light.intensity * 300.0 * attenuation * saturate((dot(light.direction, normalize(worldPos - light.position)) - cos(radians(outer))) / (cos(radians(inner)) - cos(radians(outer))));
+    float intensity = light.intensity * 150.0 * attenuation * saturate((dot(light.direction, normalize(worldPos - light.position)) - cos(radians(outer))) / (cos(radians(inner)) - cos(radians(outer))));
 
     return light.color * intensity;
 }
 
-float Phase(float3 v, float3 l, float g) 
+float Anisotropy(float3 v, float3 l, float g)
 {
-	float g2 = g * g;
-	return (1.0 / (4.0 * 3.14159)) * ((1.0 - g2) / pow(abs(1.0 + g2 - 2.0 * g * max(0.0, dot(v, l))), 1.5));
+    float costheta = dot(v, l);
+	float gsq = g*g;
+	float denom = 1 + gsq - 2.0 * g * costheta;
+	denom = denom * denom * denom;
+	denom = sqrt(max(0, denom));
+
+	return (1 - gsq) / denom;
 }
 
 float3 SampleLights (float3 worldPos, float3 viewDirection, float scatterCoefficient)
@@ -155,20 +173,20 @@ float3 SampleLights (float3 worldPos, float3 viewDirection, float scatterCoeffic
 
     for(uint lightID = 0; lightID < lightDataLength; lightID++)
     {
-        LightData light = lightData[lightID];
+        AetherLightData light = lightData[lightID];
 
         float3 lightDirection = normalize(worldPos - light.position);
 
         switch(light.type)
         {
             case 0: //Spot
-                color += SpotLight(light, worldPos) * Phase(viewDirection, lightDirection, scatterCoefficient);
+                color += SpotLight(light, worldPos) * Anisotropy(viewDirection, lightDirection, scatterCoefficient);
                 break;
             case 1: //Directional
-                color += DirectionalLight(light);
+                color += DirectionalLight(light, worldPos) * Anisotropy(viewDirection, light.direction, scatterCoefficient);
                 break;
             case 2: //Point
-                color += PointLight(light, worldPos) * Phase(viewDirection, lightDirection, scatterCoefficient);
+                color += PointLight(light, worldPos) * Anisotropy(viewDirection, lightDirection, scatterCoefficient);
                 break;
         }
     }

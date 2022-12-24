@@ -27,7 +27,8 @@ namespace Aether
 
             pass = new(settings, fogCompute, raymarchCompute)
             {
-                renderPassEvent = RenderPassEvent.BeforeRenderingPostProcessing
+                renderPassEvent = RenderPassEvent.AfterRenderingTransparents,
+                
             };
         }
 
@@ -74,7 +75,7 @@ namespace Aether
 
         public void SetTarget(RTHandle targetHandle) => target = targetHandle;
 
-        public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
+        public override void Configure(CommandBuffer cmd, RenderTextureDescriptor cameraTextureDescriptor)
         {
             ConfigureTarget(target);
         }
@@ -265,6 +266,7 @@ namespace Aether
 
     public struct LightData
     {
+        public Matrix4x4 mat;
         public Vector3 position;
         public Vector3 direction;
         public Vector3 color;
@@ -272,12 +274,13 @@ namespace Aether
         public float angle;
         public int type;
 
-        public const int SIZE = VECTOR3_SIZE + VECTOR3_SIZE + VECTOR3_SIZE + FLOAT_SIZE + FLOAT_SIZE + INT_SIZE;
+        public const int SIZE = MATRIX4X4_SIZE + VECTOR3_SIZE + VECTOR3_SIZE + VECTOR3_SIZE + FLOAT_SIZE + FLOAT_SIZE + INT_SIZE;
 
         public void Update (AetherLight aetherLight)
         {
             Light light = aetherLight.Light;
-
+            
+            mat = Matrix4x4.Perspective(light.spotAngle, 1f, 1f, 0.0001f / light.range) * Matrix4x4.Scale(new Vector3(0.5f,0.5f,1f));
             position = aetherLight.transform.position;
             direction = aetherLight.transform.forward;
             color = new Vector3(light.color.r, light.color.g, light.color.b);

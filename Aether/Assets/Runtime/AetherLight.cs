@@ -5,7 +5,7 @@ namespace Aether
     [RequireComponent(typeof(Light))]
     public class AetherLight : MonoBehaviour
     {
-        private Light light;
+        new Light light;
 
         public Light Light
         {

@@ -5,6 +5,7 @@ using UnityEngine.Rendering.Universal;
 
 namespace Aether
 {
+    [System.Serializable]
     public class AetherFogPass : ScriptableRenderPass
     {
         const string FOG_SHADER_NAME = "ComputeFog";
@@ -25,6 +26,7 @@ namespace Aether
         public Material BlitMaterial { get; }
 
         public RTHandle Target { get; set; }
+        public RTHandle ShadowHandle { get; set; }
 
         [SerializeField] RenderTexture fogTexture, raymarchTexture;
 
@@ -52,6 +54,7 @@ namespace Aether
         public override void Configure(CommandBuffer cmd, RenderTextureDescriptor cameraTextureDescriptor)
         {
             ConfigureTarget(Target);
+            ConfigureTarget(ShadowHandle);
         }
 
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
@@ -89,7 +92,7 @@ namespace Aether
         }
         public void SetupTextures ()
         {
-            RenderTexture reference = new RenderTexture(Settings.VolumeResolution.x, Settings.VolumeResolution.y, 0, RenderTextureFormat.ARGBHalf)
+            RenderTexture reference = new (Settings.VolumeResolution.x, Settings.VolumeResolution.y, 0, RenderTextureFormat.ARGBHalf)
             {
                 volumeDepth = Settings.VolumeResolution.z,
                 dimension = TextureDimension.Tex3D,
@@ -192,6 +195,8 @@ namespace Aether
             FogCompute.SetFloat("time", Time.unscaledTime);
 
             FogCompute.SetInt("sampleCount", Settings.SampleCount);
+
+            FogCompute.SetTexture(kernel, "shadowTexture", AetherShadowPass.shadowTexture);
 
             int3 dispatchSize = GetDispatchSize(FogCompute, kernel, Settings.VolumeResolution);
 

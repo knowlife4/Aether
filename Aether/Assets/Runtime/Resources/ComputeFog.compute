@@ -53,6 +53,14 @@ uint lightDataLength;
 
 uint sampleCount;
 
+Texture2D<float> shadowTexture;
+SamplerState sampler_shadowTexture;
+
+float SampleMainShadowMap(float4 shadowCoord)
+{
+    return shadowTexture.SampleLevel(sampler_shadowTexture, shadowCoord.xy, 0.0f).r;
+}
+
 float4 GetRayDirection (uint3 id, CameraData camera)
 {
     float x = (id.x / fogTextureResolution.x) * camera.aspect * 2.0 - camera.aspect;
@@ -136,47 +144,12 @@ float3 DirectionalLight(AetherLightData light, float3 worldPos)
     float attenuation = 1;
 
     float4 shadowCoord = TransformWorldToShadowCoord(worldPos);
-	float shadowAtten = MainLightRealtimeShadow(shadowCoord);
+	float shadowAtten = SampleMainShadowMap(shadowCoord);
 
-    attenuation *= shadowAtten > shadowCoord.z;
+    attenuation *= shadowAtten < shadowCoord.z;
 
     return light.color * light.intensity * attenuation;
 }
-
-half AdditionalLightRealtimeShadowReturnShadowCoords(int lightIndex, float3 positionWS, half3 lightDirection, out float4 shadowCoord)
-{
-    #if !defined(ADDITIONAL_LIGHT_CALCULATE_SHADOWS)
-        shadowCoord = float4(1, 1, 1, 1);
-        return half(1.0);
-    #endif
-
-    ShadowSamplingData shadowSamplingData = GetAdditionalLightShadowSamplingData(lightIndex);
-
-    half4 shadowParams = GetAdditionalLightShadowParams(lightIndex);
-
-    int shadowSliceIndex = shadowParams.w;
-    if (shadowSliceIndex < 0)
-        return 1.0;
-
-    half isPointLight = shadowParams.z;
-
-    UNITY_BRANCH
-    if (isPointLight)
-    {
-        // This is a point light, we have to find out which shadow slice to sample from
-        float cubemapFaceId = CubeMapFaceID(-lightDirection);
-        shadowSliceIndex += cubemapFaceId;
-    }
-
-    #if USE_STRUCTURED_BUFFER_FOR_LIGHT_DATA
-        shadowCoord = mul(_AdditionalLightsWorldToShadow_SSBO[shadowSliceIndex], float4(positionWS, 1.0));
-    #else
-        shadowCoord = mul(_AdditionalLightsWorldToShadow[shadowSliceIndex], float4(positionWS, 1.0));
-    #endif
-
-    return SampleShadowmap(TEXTURE2D_ARGS(_AdditionalLightsShadowmapTexture, sampler_AdditionalLightsShadowmapTexture), shadowCoord, shadowSamplingData, shadowParams, true);
-}
-
 
 float3 SpotLight(AetherLightData light, float3 worldPos)
 {
@@ -192,11 +165,6 @@ float3 SpotLight(AetherLightData light, float3 worldPos)
     float intensity = light.intensity * attenuation * saturate((dot(light.direction, normalize(worldPos - light.position)) - cos(radians(outer))) / (cos(radians(inner)) - cos(radians(outer))));
 
     float4 lightCoord = mul(light.mat, float4(worldPos, 1.0f));
-
-	float4 shadowCoord;
-    float shadowAtten = AdditionalLightRealtimeShadowReturnShadowCoords(0, worldPos, light.direction, shadowCoord);
-    
-    attenuation *= shadowAtten > shadowCoord.z;
 
     return light.color * intensity;
 }

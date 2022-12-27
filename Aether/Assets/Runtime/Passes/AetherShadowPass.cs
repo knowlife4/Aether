@@ -9,13 +9,6 @@ namespace Aether
     {
         public static RenderTexture shadowTexture;
 
-        public Material Material;
-
-        public AetherShadowPass(Material material)
-        {
-            Material = material;
-        }
-
         public RTHandle Target { get; set; }
 
         public void CreateTexture ()

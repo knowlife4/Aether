@@ -10,7 +10,6 @@ namespace Aether
     public class AetherFeature : ScriptableRendererFeature
     {
         [SerializeField] AetherFogPassSettings settings = new();
-        [SerializeField] Material material;
 
         [SerializeField] AetherShadowPass shadowPass = null;
         [SerializeField] AetherFogPass fogPass = null;
@@ -23,7 +22,7 @@ namespace Aether
 
         public override void Create()
         {
-            shadowPass = new(material)
+            shadowPass = new()
             {
                 renderPassEvent = RenderPassEvent.AfterRenderingShadows
             };

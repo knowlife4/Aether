@@ -17,16 +17,13 @@ namespace Aether
             Settings = settings;
             FogCompute = (ComputeShader)Resources.Load(FOG_SHADER_NAME);
             RaymarchCompute = (ComputeShader)Resources.Load(RAYMARCH_SHADER_NAME);
-            BlitMaterial = new(Shader.Find(BLIT_SHADER_NAME));
         }
 
         public AetherFogPassSettings Settings { get; }
         public ComputeShader FogCompute { get; }
         public ComputeShader RaymarchCompute { get; }
-        public Material BlitMaterial { get; }
 
         public RTHandle Target { get; set; }
-        public RTHandle ShadowHandle { get; set; }
 
         [SerializeField] RenderTexture fogTexture, raymarchTexture;
 
@@ -43,6 +40,8 @@ namespace Aether
         FogData[] fogData;
         ComputeBuffer fogDataBuffer;
 
+        Material blitMaterial;
+
         public static int3 GetDispatchSize (ComputeShader shader, int kernel, int3 desiredThreads)
         {
             uint3 threadGroups;
@@ -54,7 +53,6 @@ namespace Aether
         public override void Configure(CommandBuffer cmd, RenderTextureDescriptor cameraTextureDescriptor)
         {
             ConfigureTarget(Target);
-            ConfigureTarget(ShadowHandle);
         }
 
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
@@ -76,7 +74,7 @@ namespace Aether
 
             using (new ProfilingScope(cmd, new ProfilingSampler("AetherBlit")))
             {
-                Blitter.BlitCameraTexture(cmd, Target, Target, BlitMaterial, 0);
+                Blitter.BlitCameraTexture(cmd, Target, Target, blitMaterial, 0);
             }
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();
@@ -225,11 +223,17 @@ namespace Aether
         //* Update Material
         public bool UpdateMaterial ()
         {
-            BlitMaterial.SetTexture("_Volume", raymarchTexture);
-            BlitMaterial.SetFloat("_fogFar", Settings.ViewDistance);
-            BlitMaterial.SetFloat("_cameraFar", camera.farClipPlane);
+            if(blitMaterial == null) SetupMaterial();
+
+            blitMaterial.SetTexture("_Volume", raymarchTexture);
+            blitMaterial.SetFloat("_fogFar", Settings.ViewDistance);
+            blitMaterial.SetFloat("_cameraFar", camera.farClipPlane);
 
             return true;
+        }
+        public void SetupMaterial ()
+        {
+            blitMaterial = new(Shader.Find(BLIT_SHADER_NAME));
         }
     }
 

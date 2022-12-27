@@ -1,8 +1,5 @@
-using System.Reflection;
 using UnityEngine;
-using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
-using UnityEngine.Rendering.Universal.Internal;
 using static Aether.AetherSizeHelpers;
 
 namespace Aether
@@ -35,19 +32,9 @@ namespace Aether
 
         public override void SetupRenderPasses(ScriptableRenderer renderer, in RenderingData renderingData)
         {
-            BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-            UniversalRenderer universalRenderer = renderer as UniversalRenderer;
-
-            MainLightShadowCasterPass mainLightPass = (MainLightShadowCasterPass)typeof(UniversalRenderer).GetField("m_MainLightShadowCasterPass", flags).GetValue(universalRenderer);
-
-            RTHandle handle = (RTHandle)typeof(MainLightShadowCasterPass).GetField("m_MainLightShadowmapTexture", flags).GetValue(mainLightPass);
-
             fogPass.ConfigureInput(ScriptableRenderPassInput.Color);
             fogPass.ConfigureInput(ScriptableRenderPassInput.Depth);
             fogPass.Target = renderer.cameraColorTargetHandle;
-            fogPass.ShadowHandle = handle;
-
-            shadowPass.Target = handle;
         }
     }
 

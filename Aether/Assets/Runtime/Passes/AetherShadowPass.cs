@@ -20,7 +20,7 @@ namespace Aether
 
         public void CreateTexture ()
         {
-            shadowTexture = new(4096, 4096, 0, RenderTextureFormat.R16);
+            shadowTexture = new(Target.rt.width, Target.rt.height, 0, RenderTextureFormat.R16);
             shadowTexture.Create();
         }
 

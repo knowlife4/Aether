@@ -51,14 +51,14 @@ namespace Aether
             AdditionalShadowTarget = (RTHandle)typeof(AdditionalLightsShadowCasterPass).GetField("m_AdditionalLightsShadowmapHandle", flags).GetValue(additionalLightPass);
         }
 
-        public bool CompareDesc (RenderTextureDescriptor a, RenderTextureDescriptor b)
+        public bool CompareRT (RenderTexture a, RenderTexture b)
         {
-            return a.height == b.height && a.width == b.width;
+            return a != null && b != null && a.height == b.height && a.width == b.width;
         }
 
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
-            if(!CompareDesc(MainShadowTarget.rt.descriptor, AdditionalShadowTarget.rt.descriptor)) CreateTexture();
+            if(!CompareRT(MainShadowTarget.rt, AdditionalShadowTarget.rt)) CreateTexture();
 
             CommandBuffer cmd = CommandBufferPool.Get();
             using (new ProfilingScope(cmd, new ProfilingSampler("Aether Shadow Pass")))

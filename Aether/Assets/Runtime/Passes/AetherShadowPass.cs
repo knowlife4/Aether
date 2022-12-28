@@ -58,7 +58,7 @@ namespace Aether
 
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
-            if(!CompareRT(MainShadowTarget.rt, AdditionalShadowTarget.rt)) CreateTexture();
+            if(!CompareRT(MainShadowTarget.rt, MainShadowTexture) || !CompareRT(AdditionalShadowTarget.rt, AdditionalShadowTexture)) CreateTexture();
 
             CommandBuffer cmd = CommandBufferPool.Get();
             using (new ProfilingScope(cmd, new ProfilingSampler("Aether Shadow Pass")))

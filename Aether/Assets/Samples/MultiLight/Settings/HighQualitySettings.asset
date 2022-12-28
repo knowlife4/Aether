@@ -111,7 +111,6 @@ MonoBehaviour:
       x: 320
       y: 180
       z: 128
-    SampleCount: 5
     ViewDistance: 70
   fogPass:
     fogTexture: {fileID: 0}

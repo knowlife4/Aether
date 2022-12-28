@@ -95,9 +95,11 @@ namespace Aether
 
         public void Dispose ()
         {
-            cameraDataBuffer?.Dispose();
-            lightDataBuffer?.Dispose();
-            fogDataBuffer?.Dispose();
+            cameraDataBuffer?.Release();
+            lightDataBuffer?.Release();
+            fogDataBuffer?.Release();
+
+            Debug.Log("Disposing!");
 
             SceneManager.sceneLoaded -= OnSceneLoad;
         }

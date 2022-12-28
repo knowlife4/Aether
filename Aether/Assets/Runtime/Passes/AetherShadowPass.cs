@@ -17,10 +17,18 @@ namespace Aether
 
         public void CreateTexture ()
         {
-            MainShadowTexture = new(MainShadowTarget.rt.width, MainShadowTarget.rt.height, 0, RenderTextureFormat.R16);
+            var mainDesc = MainShadowTarget.rt.descriptor;
+            mainDesc.colorFormat = RenderTextureFormat.R16;
+            mainDesc.depthBufferBits = 0;
+
+            MainShadowTexture = new(mainDesc);
             MainShadowTexture.Create();
 
-            AdditionalShadowTexture = new(AdditionalShadowTarget.rt.width, AdditionalShadowTarget.rt.height, 0, RenderTextureFormat.R16);
+            var additionalDesc = AdditionalShadowTarget.rt.descriptor;
+            additionalDesc.colorFormat = RenderTextureFormat.R16;
+            additionalDesc.depthBufferBits = 0;
+
+            AdditionalShadowTexture = new(additionalDesc);
             AdditionalShadowTexture.Create();
         }
 
@@ -43,9 +51,14 @@ namespace Aether
             AdditionalShadowTarget = (RTHandle)typeof(AdditionalLightsShadowCasterPass).GetField("m_AdditionalLightsShadowmapHandle", flags).GetValue(additionalLightPass);
         }
 
+        public bool CompareDesc (RenderTextureDescriptor a, RenderTextureDescriptor b)
+        {
+            return a.height == b.height && a.width == b.width;
+        }
+
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
-            if(MainShadowTexture == null || MainShadowTexture.width != MainShadowTarget.rt.width || AdditionalShadowTexture == null || AdditionalShadowTexture.width != AdditionalShadowTarget.rt.width) CreateTexture();
+            if(!CompareDesc(MainShadowTarget.rt.descriptor, AdditionalShadowTarget.rt.descriptor)) CreateTexture();
 
             CommandBuffer cmd = CommandBufferPool.Get();
             using (new ProfilingScope(cmd, new ProfilingSampler("Aether Shadow Pass")))

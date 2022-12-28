@@ -16,6 +16,7 @@ struct AetherLightData
     float3 color;
     float intensity;
     float angle;
+    int shadowSliceIndex;
     int type;
 };
 
@@ -51,14 +52,29 @@ uint fogDataLength;
 StructuredBuffer<AetherLightData> lightData;
 uint lightDataLength;
 
-uint sampleCount;
+//uint sampleCount;
 
-Texture2D<float> shadowTexture;
-SamplerState sampler_shadowTexture;
+Texture2D<float> mainShadowTexture;
+SamplerState sampler_mainShadowTexture;
+
+Texture2D<float> additionalShadowTexture;
+SamplerState sampler_additionalShadowTexture;
 
 float SampleMainShadowMap(float4 shadowCoord)
 {
-    return shadowTexture.SampleLevel(sampler_shadowTexture, shadowCoord.xy, 0.0f).r;
+    return mainShadowTexture.SampleLevel(sampler_mainShadowTexture, shadowCoord.xy, 0.0f).r;
+}
+
+float SampleAdditionalShadowMap(AetherLightData light, float3 worldPos, out float4 shadowCoord)
+{
+
+    shadowCoord = mul(light.mat, float4(worldPos, 1.0f));
+    shadowCoord.xyz /= shadowCoord.w;
+
+    shadowCoord.xy = shadowCoord.xy * 0.5f + 0.5f;
+	shadowCoord.y = 1.0f - shadowCoord.y;
+
+    return additionalShadowTexture.SampleLevel(sampler_additionalShadowTexture, shadowCoord.xy, 0.0f).r;
 }
 
 float4 GetRayDirection (uint3 id, CameraData camera)
@@ -153,18 +169,20 @@ float3 DirectionalLight(AetherLightData light, float3 worldPos)
 
 float3 SpotLight(AetherLightData light, float3 worldPos)
 {
-    float3 adjustedPos = worldPos += light.direction;
-
     float distance = max(0.0, length(light.position - worldPos));
     float attenuation = 1.0 / (1.0 + 0.01 * distance + 0.1 * distance * distance);
 
     float angle = light.angle / 2.0;
     float inner = angle - 10.0;
-    float outer = angle + 5.0;
+    float outer = angle;
 
     float intensity = light.intensity * attenuation * saturate((dot(light.direction, normalize(worldPos - light.position)) - cos(radians(outer))) / (cos(radians(inner)) - cos(radians(outer))));
 
-    float4 lightCoord = mul(light.mat, float4(worldPos, 1.0f));
+    //! Only works for one spotlight
+    // float4 shadowCoord;
+    // float shadowAtten = SampleAdditionalShadowMap(light, worldPos, shadowCoord);
+
+    // intensity *= shadowAtten < shadowCoord.z;
 
     return light.color * intensity;
 }
@@ -228,15 +246,17 @@ void ComputeFog (uint3 id : SV_DispatchThreadID)
     float3 worldPos = GetWorldPosition(id, camera);
     float3 viewDirection = normalize(camera.position - worldPos);
 
-    float3 offset = mul(camera.inverseViewMatrix, GetRayDirection(id, camera)).xyz;
+    //! Breaks Depth Occlusion
+    // float4 rayDir = GetRayDirection(id, camera);
+    // float3 offset = mul(camera.inverseViewMatrix, float4(rayDir.xy, rayDir.z / sampleCount, 0)).xyz;
 
-    float4 sum = 0;
-    for(uint i = 0; i < sampleCount; i++)
-    {
-        float3 samplePos = worldPos + (offset * i);
+    // float4 sum = 0;
+    // for(uint i = 0; i < sampleCount; i++)
+    // {
+    //     float3 samplePos = worldPos + (offset * i);
 
-        sum += Sample(samplePos, viewDirection);
-    }
+    //     sum += Sample(samplePos, viewDirection);
+    // }
 
-    fogTexture[id] = sum / sampleCount;
+    fogTexture[id] = Sample(worldPos, viewDirection);;
 }

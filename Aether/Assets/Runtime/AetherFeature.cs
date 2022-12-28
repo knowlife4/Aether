@@ -36,6 +36,12 @@ namespace Aether
             fogPass.ConfigureInput(ScriptableRenderPassInput.Depth);
             fogPass.Target = renderer.cameraColorTargetHandle;
         }
+
+        protected override void Dispose(bool disposing)
+        {
+            fogPass?.Dispose();
+            base.Dispose(disposing);
+        }
     }
 
     public struct LightData
@@ -46,15 +52,21 @@ namespace Aether
         public Vector3 color;
         public float intensity;
         public float angle;
+        public int shadowSliceIndex;
         public int type;
 
-        public const int SIZE = MATRIX4X4_SIZE + VECTOR3_SIZE + VECTOR3_SIZE + VECTOR3_SIZE + FLOAT_SIZE + FLOAT_SIZE + INT_SIZE;
+        public const int SIZE = MATRIX4X4_SIZE + VECTOR3_SIZE + VECTOR3_SIZE + VECTOR3_SIZE + FLOAT_SIZE + FLOAT_SIZE + INT_SIZE + INT_SIZE;
 
         public void Update (AetherLight aetherLight)
         {
             Light light = aetherLight.Light;
             
-            mat = Matrix4x4.Perspective(light.spotAngle, 1f, 1f, 0.0001f / light.range) * Matrix4x4.Scale(new Vector3(0.5f,0.5f,1f));
+            Matrix4x4 v = aetherLight.transform.worldToLocalMatrix;
+			Matrix4x4 p = GL.GetGPUProjectionMatrix(Matrix4x4.Perspective(light.spotAngle, 1.0f, light.shadowNearPlane, light.range), true);
+
+			p *= Matrix4x4.Scale(new Vector3(1.0f, 1.0f, -1.0f));
+			mat = p * v;
+
             position = aetherLight.transform.position;
             direction = aetherLight.transform.forward;
             color = new Vector3(light.color.r, light.color.g, light.color.b);

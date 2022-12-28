@@ -305,7 +305,7 @@
     "m_DefaultRefNameVersion": 1,
     "m_RefNameGeneratedByDisplayName": "Shadow",
     "m_DefaultReferenceName": "_Shadow",
-    "m_OverrideReferenceName": "_MainShadow",
+    "m_OverrideReferenceName": "_AdditionalShadowTexture",
     "m_GeneratePropertyBlock": false,
     "m_UseCustomSlotLabel": false,
     "m_CustomSlotLabel": "",

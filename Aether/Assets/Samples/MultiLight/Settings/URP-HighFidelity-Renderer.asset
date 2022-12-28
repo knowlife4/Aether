@@ -108,12 +108,11 @@ MonoBehaviour:
   m_Active: 1
   settings:
     VolumeResolution:
-      x: 160
-      y: 90
+      x: 320
+      y: 180
       z: 128
     SampleCount: 5
     ViewDistance: 70
-  material: {fileID: 2100000, guid: 99cee3bfc79f4254183645fd78eb7bc7, type: 2}
-  shadowPass:
-    shadowTexture: {fileID: 0}
-    Material: {fileID: 2100000, guid: 99cee3bfc79f4254183645fd78eb7bc7, type: 2}
+  fogPass:
+    fogTexture: {fileID: 0}
+    raymarchTexture: {fileID: 0}

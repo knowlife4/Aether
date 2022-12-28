@@ -61,8 +61,8 @@ namespace Aether
             if(!UpdateCamera()) throw new("Failed To Update Camera!");
             if(!UpdateLights()) throw new("Failed To Update Lights!");
             if(!UpdateFogVolumes()) throw new("Failed To Update Volumes!");
-            if(!UpdateFogCompute()) throw new("Failed To Update Fog Compute!");
-            if(!UpdateRaymarchCompute()) throw new("Failed To Update Raymarch Compute!");
+            if(!UpdateFogCompute(context)) throw new("Failed To Update Fog Compute!");
+            if(!UpdateRaymarchCompute(context)) throw new("Failed To Update Raymarch Compute!");
             if(!UpdateMaterial()) throw new("Failed To Update Material!");
 
             Blit(context);
@@ -72,14 +72,22 @@ namespace Aether
         {
             CommandBuffer cmd = CommandBufferPool.Get();
 
-            using (new ProfilingScope(cmd, new ProfilingSampler("AetherBlit")))
+            using (new ProfilingScope(cmd, new ProfilingSampler("Aether Blit")))
             {
+                //cmd.Blit(Target, Target, blitMaterial);
                 Blitter.BlitCameraTexture(cmd, Target, Target, blitMaterial, 0);
             }
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();
 
             CommandBufferPool.Release(cmd);
+        }
+
+        public void Dispose ()
+        {
+            cameraDataBuffer?.Dispose();
+            lightDataBuffer?.Dispose();
+            fogDataBuffer?.Dispose();
         }
 
         //* TEXTURES
@@ -175,7 +183,7 @@ namespace Aether
         }
 
         //* Fog Compute
-        public bool UpdateFogCompute ()
+        public bool UpdateFogCompute (ScriptableRenderContext context)
         {
             var kernel = FogCompute.FindKernel("ComputeFog");
 
@@ -192,19 +200,31 @@ namespace Aether
 
             FogCompute.SetFloat("time", Time.unscaledTime);
 
-            FogCompute.SetInt("sampleCount", Settings.SampleCount);
+            //FogCompute.SetInt("sampleCount", Settings.SampleCount);
 
-            FogCompute.SetTexture(kernel, "shadowTexture", AetherShadowPass.shadowTexture);
+            FogCompute.SetTexture(kernel, "mainShadowTexture", AetherShadowPass.MainShadowTexture);
+
+            FogCompute.SetTexture(kernel, "additionalShadowTexture", AetherShadowPass.AdditionalShadowTexture);
 
             int3 dispatchSize = GetDispatchSize(FogCompute, kernel, Settings.VolumeResolution);
 
-            FogCompute.Dispatch(kernel, dispatchSize.x, dispatchSize.y, dispatchSize.z);
+            CommandBuffer cmd = CommandBufferPool.Get();
+
+            using (new ProfilingScope(cmd, new ProfilingSampler("Aether Fog Compute")))
+            {
+                cmd.DispatchCompute(FogCompute, kernel, dispatchSize.x, dispatchSize.y, dispatchSize.z);
+            }
+
+            context.ExecuteCommandBuffer(cmd);
+            cmd.Clear();
+
+            CommandBufferPool.Release(cmd);
 
             return true;
         }
 
         //* Raymarch Compute
-        public bool UpdateRaymarchCompute ()
+        public bool UpdateRaymarchCompute (ScriptableRenderContext context)
         {
             var kernel = RaymarchCompute.FindKernel("RaymarchFog");
 
@@ -215,7 +235,17 @@ namespace Aether
 
             int3 dispatchSize = GetDispatchSize(RaymarchCompute, kernel, Settings.VolumeResolution);
 
-            RaymarchCompute.Dispatch(kernel, dispatchSize.x, dispatchSize.y, 1);
+            CommandBuffer cmd = CommandBufferPool.Get();
+
+            using (new ProfilingScope(cmd, new ProfilingSampler("Aether Raymarch Compute")))
+            {
+                cmd.DispatchCompute(RaymarchCompute, kernel, dispatchSize.x, dispatchSize.y, 1);
+            }
+
+            context.ExecuteCommandBuffer(cmd);
+            cmd.Clear();
+
+            CommandBufferPool.Release(cmd);
 
             return true;
         }
@@ -241,7 +271,7 @@ namespace Aether
     public class AetherFogPassSettings
     {
         public int3 VolumeResolution = new(160, 90, 128);
-        public int SampleCount = 5;
+        //public int SampleCount = 5;
         public float ViewDistance = 70;
     }
 }

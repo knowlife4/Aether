@@ -181,8 +181,8 @@ Camera:
     y: 0
     width: 1
     height: 1
-  near clip plane: 0.3
-  far clip plane: 1000
+  near clip plane: 0.03
+  far clip plane: 100
   field of view: 60.000004
   orthographic: 0
   orthographic size: 5
@@ -208,8 +208,8 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 330585543}
-  m_LocalRotation: {x: -0.009807982, y: -0.97642463, z: 0.017511306, w: -0.21492355}
-  m_LocalPosition: {x: -12.266446, y: 4.3227277, z: 20.216179}
+  m_LocalRotation: {x: 0.06330934, y: 0.19208328, z: -0.012089616, w: 0.9792598}
+  m_LocalPosition: {x: -7.3956146, y: 23.016457, z: -15.146547}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -283,7 +283,7 @@ Light:
   serializedVersion: 10
   m_Type: 1
   m_Shape: 0
-  m_Color: {r: 0.5165555, g: 0.16470587, b: 1, a: 1}
+  m_Color: {r: 0, g: 0, b: 0, a: 1}
   m_Intensity: 1
   m_Range: 10
   m_SpotAngle: 30
@@ -520,7 +520,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &702484783
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -555,8 +555,8 @@ Light:
   serializedVersion: 10
   m_Type: 0
   m_Shape: 0
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_Intensity: 480.9
+  m_Color: {r: 1, g: 0.3087483, b: 0, a: 1}
+  m_Intensity: 241.82
   m_Range: 540.4
   m_SpotAngle: 90.51781
   m_InnerSpotAngle: 73.7818
@@ -613,14 +613,14 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 702484782}
-  m_LocalRotation: {x: 0.9270834, y: 0.12131212, z: -0.046019148, w: 0.35168463}
-  m_LocalPosition: {x: 0.36, y: 24, z: 8.99}
+  m_LocalRotation: {x: 0.7244559, y: 0.17553453, z: -0.23004946, w: 0.6256425}
+  m_LocalPosition: {x: 0.9300002, y: 21.16, z: 6.81}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 3
-  m_LocalEulerAnglesHint: {x: 138.452, y: 0, z: -14.910004}
+  m_LocalEulerAnglesHint: {x: 99.15399, y: 45.606003, z: 12.164001}
 --- !u!114 &702484786
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -833,9 +833,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Type: 1
-  Color: {r: 1, g: 1, b: 1, a: 1}
-  Density: 0.189
-  ScatterCoefficient: 0.615
+  Color: {r: 1, g: 0.7789744, b: 0.60784316, a: 1}
+  Density: 0.282
+  ScatterCoefficient: 0.296
 --- !u!1 &1549330461
 GameObject:
   m_ObjectHideFlags: 0
@@ -935,7 +935,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1549330461}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.19, y: 10.4, z: -5.1}
+  m_LocalPosition: {x: 0.08, y: 18.92, z: 6.66}
   m_LocalScale: {x: 10, y: 10, z: 10}
   m_ConstrainProportionsScale: 0
   m_Children: []

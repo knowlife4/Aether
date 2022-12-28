@@ -2,6 +2,7 @@ using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using UnityEngine.SceneManagement;
 
 namespace Aether
 {
@@ -17,6 +18,8 @@ namespace Aether
             Settings = settings;
             FogCompute = (ComputeShader)Resources.Load(FOG_SHADER_NAME);
             RaymarchCompute = (ComputeShader)Resources.Load(RAYMARCH_SHADER_NAME);
+
+            SceneManager.sceneLoaded += OnSceneLoad;
         }
 
         public AetherFogPassSettings Settings { get; }
@@ -83,11 +86,20 @@ namespace Aether
             CommandBufferPool.Release(cmd);
         }
 
+        public void OnSceneLoad (Scene scene, LoadSceneMode mode)
+        {
+            SetupCamera();
+            SetupLights();
+            SetupFogVolumes();
+        }
+
         public void Dispose ()
         {
             cameraDataBuffer?.Dispose();
             lightDataBuffer?.Dispose();
             fogDataBuffer?.Dispose();
+
+            SceneManager.sceneLoaded -= OnSceneLoad;
         }
 
         //* TEXTURES

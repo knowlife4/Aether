@@ -93,6 +93,11 @@ namespace Aether
             SetupFogVolumes();
         }
 
+        public override void OnCameraCleanup(CommandBuffer cmd)
+        {
+            Dispose();
+        }
+
         public void Dispose ()
         {
             cameraDataBuffer?.Release();

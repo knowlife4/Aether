@@ -56,13 +56,16 @@ uint lightDataLength;
 
 Texture2D<float> mainShadowTexture;
 SamplerState sampler_mainShadowTexture;
+bool useMainShadowTexture;
 
 Texture2D<float> additionalShadowTexture;
 SamplerState sampler_additionalShadowTexture;
 
 float SampleMainShadowMap(float4 shadowCoord)
 {
-    return mainShadowTexture.SampleLevel(sampler_mainShadowTexture, shadowCoord.xy, 0.0f).r;
+    float shadowSample = -9999;
+    if(useMainShadowTexture) shadowSample = mainShadowTexture.SampleLevel(sampler_mainShadowTexture, shadowCoord.xy, 0.0f).r;
+    return shadowSample;
 }
 
 float SampleAdditionalShadowMap(AetherLightData light, float3 worldPos, out float4 shadowCoord)

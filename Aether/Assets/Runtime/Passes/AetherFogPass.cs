@@ -99,6 +99,9 @@ namespace Aether
             lightDataBuffer?.Release();
             fogDataBuffer?.Release();
 
+            fogTexture.Release();
+            raymarchTexture.Release();
+
             Debug.Log("Disposing!");
 
             SceneManager.sceneLoaded -= OnSceneLoad;
@@ -216,9 +219,11 @@ namespace Aether
 
             //FogCompute.SetInt("sampleCount", Settings.SampleCount);
 
-            FogCompute.SetTexture(kernel, "mainShadowTexture", AetherShadowPass.MainShadowTexture);
+            FogCompute.SetBool("useMainShadowTexture", AetherShadowPass.UseMainShadowTexture);
+            
+            FogCompute.SetTexture(kernel, "mainShadowTexture", (Texture)AetherShadowPass.MainShadowTexture ?? Texture2D.whiteTexture);
 
-            FogCompute.SetTexture(kernel, "additionalShadowTexture", AetherShadowPass.AdditionalShadowTexture);
+            //FogCompute.SetTexture(kernel, "additionalShadowTexture", AetherShadowPass.AdditionalShadowTexture);
 
             int3 dispatchSize = GetDispatchSize(FogCompute, kernel, Settings.VolumeResolution);
 

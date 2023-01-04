@@ -12,12 +12,14 @@ namespace Aether
         const string FOG_SHADER_NAME = "ComputeFog";
         const string RAYMARCH_SHADER_NAME = "RaymarchFog";
         const string BLIT_SHADER_NAME = "Aether/FogApply";
+        const string BLUE_NOISE_NAME = "BlueNoise";
 
         public AetherFogPass (AetherFogPassSettings settings)
         {
             Settings = settings;
             FogCompute = (ComputeShader)Resources.Load(FOG_SHADER_NAME);
             RaymarchCompute = (ComputeShader)Resources.Load(RAYMARCH_SHADER_NAME);
+            blueNoise = (Texture)Resources.Load(BLUE_NOISE_NAME);
 
             SceneManager.sceneLoaded += OnSceneLoad;
         }
@@ -28,7 +30,7 @@ namespace Aether
 
         public RTHandle Target { get; set; }
 
-        [SerializeField] RenderTexture fogTexture, raymarchTexture;
+        [SerializeField] RenderTexture previousFogTexture, fogTexture, raymarchTexture;
 
         //Camera
         Camera camera;
@@ -45,6 +47,8 @@ namespace Aether
 
         Material blitMaterial;
 
+        Texture blueNoise;
+
         public static int3 GetDispatchSize (ComputeShader shader, int kernel, int3 desiredThreads)
         {
             uint3 threadGroups;
@@ -60,13 +64,13 @@ namespace Aether
 
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
-            if(!UpdateTextures()) throw new("Failed To Update Textures!");
-            if(!UpdateCamera()) throw new("Failed To Update Camera!");
-            if(!UpdateLights()) throw new("Failed To Update Lights!");
-            if(!UpdateFogVolumes()) throw new("Failed To Update Volumes!");
-            if(!UpdateFogCompute(context)) throw new("Failed To Update Fog Compute!");
-            if(!UpdateRaymarchCompute(context)) throw new("Failed To Update Raymarch Compute!");
-            if(!UpdateMaterial()) throw new("Failed To Update Material!");
+            if(!UpdateTextures()) return;
+            if(!UpdateCamera()) return;
+            if(!UpdateLights()) return;
+            if(!UpdateFogVolumes()) return;
+            if(!UpdateFogCompute(context)) return;
+            if(!UpdateRaymarchCompute(context)) return;
+            if(!UpdateMaterial()) return;
 
             Blit(context);
         }
@@ -99,8 +103,8 @@ namespace Aether
             lightDataBuffer?.Release();
             fogDataBuffer?.Release();
 
-            fogTexture.Release();
-            raymarchTexture.Release();
+            if(fogTexture != null) fogTexture.Release();
+            if(raymarchTexture != null) raymarchTexture.Release();
 
             Debug.Log("Disposing!");
 
@@ -115,19 +119,20 @@ namespace Aether
         }
         public void SetupTextures ()
         {
-            RenderTexture reference = new (Settings.VolumeResolution.x, Settings.VolumeResolution.y, 0, RenderTextureFormat.ARGBHalf)
+            RenderTextureDescriptor desc = new(Settings.VolumeResolution.x, Settings.VolumeResolution.y, RenderTextureFormat.ARGBHalf)
             {
                 volumeDepth = Settings.VolumeResolution.z,
                 dimension = TextureDimension.Tex3D,
                 enableRandomWrite = true,
-                wrapMode = TextureWrapMode.Clamp,
-                filterMode = FilterMode.Bilinear
             };
 
-            fogTexture = reference;
+            previousFogTexture = new(desc);
+            previousFogTexture.Create();
+
+            fogTexture = new(desc);
             fogTexture.Create();
 
-            raymarchTexture = reference;
+            raymarchTexture = new(desc);
             raymarchTexture.Create();
         }
 
@@ -151,7 +156,7 @@ namespace Aether
         public bool UpdateLights ()
         {
             if(lightDataBuffer == null || lightData == null) SetupLights();
-            if(lights == null) return false;
+            if(lightDataBuffer == null) return false;
     
             for (int i = 0; i < lights.Length; i++)
             {
@@ -177,7 +182,7 @@ namespace Aether
         public bool UpdateFogVolumes ()
         {
             if(fogDataBuffer == null || fogData == null) SetupFogVolumes();
-            if(fogVolumes == null) return false;
+            if(fogDataBuffer == null) return false;
 
             for (int i = 0; i < fogVolumes.Length; i++)
             {
@@ -204,6 +209,8 @@ namespace Aether
         {
             var kernel = FogCompute.FindKernel("ComputeFog");
 
+            FogCompute.SetTexture(kernel, "previousFogTexture", previousFogTexture);
+
             FogCompute.SetTexture(kernel, "fogTexture", fogTexture);
             FogCompute.SetVector("fogTextureResolution", new(Settings.VolumeResolution.x, Settings.VolumeResolution.y, Settings.VolumeResolution.z));
 
@@ -216,6 +223,9 @@ namespace Aether
             FogCompute.SetBuffer(kernel, "cameraData", cameraDataBuffer);
 
             FogCompute.SetFloat("time", Time.unscaledTime);
+            FogCompute.SetFloat("jitterDistance", Settings.JitterDistance);
+            FogCompute.SetFloat("jitterScale", Settings.JitterScale);
+            FogCompute.SetFloat("temporalStrength", Settings.TemporalStrength);
 
             //FogCompute.SetInt("sampleCount", Settings.SampleCount);
 
@@ -224,6 +234,9 @@ namespace Aether
             FogCompute.SetTexture(kernel, "mainShadowTexture", (Texture)AetherShadowPass.MainShadowTexture ?? Texture2D.whiteTexture);
 
             //FogCompute.SetTexture(kernel, "additionalShadowTexture", AetherShadowPass.AdditionalShadowTexture);
+
+            FogCompute.SetTexture(kernel, "blueNoise", blueNoise);
+            FogCompute.SetFloat("blueNoiseSize", blueNoise.width);
 
             int3 dispatchSize = GetDispatchSize(FogCompute, kernel, Settings.VolumeResolution);
 
@@ -290,7 +303,9 @@ namespace Aether
     public class AetherFogPassSettings
     {
         public int3 VolumeResolution = new(160, 90, 128);
-        //public int SampleCount = 5;
         public float ViewDistance = 70;
+        public float JitterDistance = 2;
+        public float JitterScale = 3;
+        [Range(0, 1)] public float TemporalStrength = .75f;
     }
 }

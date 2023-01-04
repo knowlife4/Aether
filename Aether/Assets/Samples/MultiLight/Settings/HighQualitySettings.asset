@@ -111,7 +111,8 @@ MonoBehaviour:
       x: 320
       y: 180
       z: 128
-    ViewDistance: 70
+    ViewDistance: 75
   fogPass:
+    previousFogTexture: {fileID: 0}
     fogTexture: {fileID: 0}
     raymarchTexture: {fileID: 0}

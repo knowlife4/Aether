@@ -41,6 +41,8 @@ struct AetherFogData
     int type;
 };
 
+RWTexture3D<float4> previousFogTexture;
+
 RWTexture3D<float4> fogTexture;
 float3 fogTextureResolution;
 
@@ -61,6 +63,15 @@ bool useMainShadowTexture;
 Texture2D<float> additionalShadowTexture;
 SamplerState sampler_additionalShadowTexture;
 
+Texture2D<float4> blueNoise;
+SamplerState sampler_blueNoise;
+float blueNoiseSize;
+
+float time;
+float jitterDistance;
+float jitterScale;
+float temporalStrength;
+
 float SampleMainShadowMap(float4 shadowCoord)
 {
     float shadowSample = -9999;
@@ -80,27 +91,36 @@ float SampleAdditionalShadowMap(AetherLightData light, float3 worldPos, out floa
     return additionalShadowTexture.SampleLevel(sampler_additionalShadowTexture, shadowCoord.xy, 0.0f).r;
 }
 
-float4 GetRayDirection (uint3 id, CameraData camera)
+float4 GetRayDirection (float3 id, CameraData camera)
 {
-    float x = (id.x / fogTextureResolution.x) * camera.aspect * 2.0 - camera.aspect;
-    float y = (id.y / fogTextureResolution.y) * 2.0 - 1.0;
+    float x = ((id.x + .5) / fogTextureResolution.x) * camera.aspect * 2.0 - camera.aspect;
+    float y = ((id.y + .5) / fogTextureResolution.y) * 2.0 - 1.0;
     float z = -(1.0 / tan(radians(camera.fov) / 2.0));
     return normalize(float4(x, y, z, 0.0));
 }
 
-float3 GetWorldPosition(uint3 id, CameraData camera)
+float3 GetWorldPosition(uint3 id, float jitter, CameraData camera)
 {
-    float4 rayDir = GetRayDirection(id, camera);
+    float4 rayDir = GetRayDirection(float3(id), camera);
 
     // Transform ray direction to world space
     float3 worldRayDir = mul(camera.inverseViewMatrix, rayDir).xyz;
 
     // Calculate distance to intersection with near/far planes
-    float t = id.z / (fogTextureResolution.z - 1);
+    float t = (id.z + jitter) / (fogTextureResolution.z);
     float distance = (camera.near / abs(rayDir.z)) + t * (camera.far / abs(rayDir.z));
 
     // Return intersection point in world space
     return camera.position + normalize(worldRayDir) * distance;
+}
+
+float3 GetWorldPositionJittered(uint3 id, float jitterScale, float jitterDistance, CameraData camera)
+{
+    float jitter = .0001 * jitterScale;
+    float2 coord = (float2(id.xy) * jitter * float(id.z) * jitter * blueNoiseSize) + float2(time/2, time*10) % blueNoiseSize;
+    float noise = lerp(0, jitterDistance, blueNoise.SampleLevel(sampler_blueNoise, coord, 0.0f).r);
+
+    return GetWorldPosition(id, noise, camera);
 }
 
 float4 LocalFog (AetherFogData fog, float3 worldPos, out float scatterCoefficient)
@@ -241,25 +261,23 @@ float4 Sample (float3 worldPos, float3 viewDirection)
     return float4(light * fog.rgb * scattering, scattering + absorption);
 }
 
+float nrand(float2 uv)
+{
+    return frac(sin(dot(uv, float2(12.9898, 78.233))) * 43758.5453);
+}
+
 [numthreads(16, 9, 2)]
 void ComputeFog (uint3 id : SV_DispatchThreadID)
 {
     CameraData camera = cameraData[0];
 
-    float3 worldPos = GetWorldPosition(id, camera);
+    float3 worldPos = GetWorldPositionJittered(id, jitterScale, jitterDistance, camera);
     float3 viewDirection = normalize(camera.position - worldPos);
 
-    //! Breaks Depth Occlusion
-    // float4 rayDir = GetRayDirection(id, camera);
-    // float3 offset = mul(camera.inverseViewMatrix, float4(rayDir.xy, rayDir.z / sampleCount, 0)).xyz;
+    float4 previousSample = previousFogTexture[id];
+    float4 currentSample = Sample(worldPos, viewDirection);
 
-    // float4 sum = 0;
-    // for(uint i = 0; i < sampleCount; i++)
-    // {
-    //     float3 samplePos = worldPos + (offset * i);
+    fogTexture[id] = lerp(currentSample, previousSample, saturate(temporalStrength));
 
-    //     sum += Sample(samplePos, viewDirection);
-    // }
-
-    fogTexture[id] = Sample(worldPos, viewDirection);;
+    previousFogTexture[id] = fogTexture[id];
 }

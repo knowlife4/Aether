@@ -2,7 +2,6 @@
 #pragma kernel RaymarchFog
 
 RWTexture3D<float4> raymarchTexture;
-Texture3D<float4> fogTexture;
 
 uint depthResolution;
 
@@ -20,7 +19,7 @@ void WriteOutput(uint3 pos, float4 colorAndDensity) {
 [numthreads(32, 18, 1)]
 void RaymarchFog(uint3 id : SV_DispatchThreadID)
 {
-	float4 currentSliceValue = fogTexture[uint3(id.xy, 0)];
+	float4 currentSliceValue = raymarchTexture[uint3(id.xy, 0)];
 	
 	WriteOutput(uint3(id.xy, 0), currentSliceValue);
 	
@@ -28,7 +27,7 @@ void RaymarchFog(uint3 id : SV_DispatchThreadID)
 	{
 		uint3 volumePos = uint3(id.xy, z);
 
-		float4 nextValue = fogTexture[volumePos];
+		float4 nextValue = raymarchTexture[volumePos];
 
 		currentSliceValue = AccumulateScattering(currentSliceValue, nextValue);
 		WriteOutput(volumePos, currentSliceValue);

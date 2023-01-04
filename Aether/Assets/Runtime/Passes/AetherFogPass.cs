@@ -30,7 +30,7 @@ namespace Aether
 
         public RTHandle Target { get; set; }
 
-        [SerializeField] RenderTexture previousFogTexture, fogTexture, raymarchTexture;
+        [SerializeField] RenderTexture previousFogTexture, fogTexture;
 
         //Camera
         Camera camera;
@@ -104,7 +104,7 @@ namespace Aether
             fogDataBuffer?.Release();
 
             if(fogTexture != null) fogTexture.Release();
-            if(raymarchTexture != null) raymarchTexture.Release();
+            if(previousFogTexture != null) fogTexture.Release();
 
             Debug.Log("Disposing!");
 
@@ -114,7 +114,7 @@ namespace Aether
         //* TEXTURES
         public bool UpdateTextures ()
         {
-            if(fogTexture == null || raymarchTexture == null) SetupTextures();
+            if(fogTexture == null || previousFogTexture == null) SetupTextures();
             return true;
         }
         public void SetupTextures ()
@@ -131,9 +131,6 @@ namespace Aether
 
             fogTexture = new(desc);
             fogTexture.Create();
-
-            raymarchTexture = new(desc);
-            raymarchTexture.Create();
         }
 
         //* Camera
@@ -260,8 +257,7 @@ namespace Aether
         {
             var kernel = RaymarchCompute.FindKernel("RaymarchFog");
 
-            RaymarchCompute.SetTexture(kernel, "raymarchTexture", raymarchTexture);
-            RaymarchCompute.SetTexture(kernel, "fogTexture", fogTexture);
+            RaymarchCompute.SetTexture(kernel, "raymarchTexture", fogTexture);
 
             RaymarchCompute.SetInt("depthResolution", Settings.VolumeResolution.z);
 
@@ -287,7 +283,7 @@ namespace Aether
         {
             if(blitMaterial == null) SetupMaterial();
 
-            blitMaterial.SetTexture("_Volume", raymarchTexture);
+            blitMaterial.SetTexture("_Volume", fogTexture);
             blitMaterial.SetFloat("_fogFar", Settings.ViewDistance);
             blitMaterial.SetFloat("_cameraFar", camera.farClipPlane);
 

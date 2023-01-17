@@ -24,10 +24,8 @@ namespace Aether
             //if (AdditionalShadowTexture != null) AdditionalShadowTexture.Release();
 
             var mainDesc = MainShadowTarget.rt.descriptor;
-            mainDesc.colorFormat = RenderTextureFormat.R16;
-            mainDesc.depthBufferBits = 0;
 
-            MainShadowTexture = new(mainDesc);
+            MainShadowTexture = new(mainDesc.width, mainDesc.height, 0, RenderTextureFormat.R16);
             MainShadowTexture.Create();
 
             // var additionalDesc = AdditionalShadowTarget.rt.descriptor;
@@ -50,7 +48,7 @@ namespace Aether
             MainShadowTarget = (RTHandle)typeof(MainLightShadowCasterPass).GetField("m_MainLightShadowmapTexture", flags).GetValue(mainLightPass);
             // AdditionalShadowTarget = (RTHandle)typeof(AdditionalLightsShadowCasterPass).GetField("m_AdditionalLightsShadowmapHandle", flags).GetValue(additionalLightPass);
 
-            //ConfigureTarget(AdditionalShadowTarget);
+            ConfigureTarget(MainShadowTarget);
         }
 
         public bool CompareRT(Texture a, Texture b)
@@ -69,11 +67,8 @@ namespace Aether
             CommandBuffer cmd = CommandBufferPool.Get();
             using (new ProfilingScope(cmd, new ProfilingSampler("Aether Shadow Pass")))
             {
-                cmd.CopyTexture(MainShadowTarget, MainShadowTexture);
+                cmd.CopyTexture(MainShadowTarget.rt, MainShadowTexture);
                 cmd.SetGlobalTexture("_MainShadowTexture", MainShadowTexture);
-
-                //cmd.CopyTexture(AdditionalShadowTarget, AdditionalShadowTexture);
-                //cmd.SetGlobalTexture("_AdditionalShadowTexture", AdditionalShadowTexture);
             }
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();

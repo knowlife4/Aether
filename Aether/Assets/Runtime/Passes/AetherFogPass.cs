@@ -147,7 +147,11 @@ namespace Aether
 
             return true;
         }
-        public void SetupCamera () => cameraDataBuffer = new(cameraData.Length, CameraData.SIZE);
+        public void SetupCamera()
+        {
+            cameraDataBuffer?.Release();
+            cameraDataBuffer = new(cameraData.Length, CameraData.SIZE);
+        }
 
         //* Lights
         public bool UpdateLights ()
@@ -172,6 +176,7 @@ namespace Aether
             lightData = new LightData[lights.Length];
             if(lightData.Length == 0) return;
 
+            lightDataBuffer?.Release();
             lightDataBuffer = new(lightData.Length, LightData.SIZE);
         }
 
@@ -198,6 +203,7 @@ namespace Aether
             fogData = new FogData[fogVolumes.Length];
             if(fogData.Length == 0) return;
 
+            fogDataBuffer?.Release();
             fogDataBuffer = new(fogData.Length, FogData.SIZE);
         }
 

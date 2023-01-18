@@ -112,7 +112,9 @@ MonoBehaviour:
       y: 180
       z: 128
     ViewDistance: 75
+    JitterDistance: 2
+    JitterScale: 3
+    TemporalStrength: 0.75
   fogPass:
     previousFogTexture: {fileID: 0}
     fogTexture: {fileID: 0}
-    raymarchTexture: {fileID: 0}

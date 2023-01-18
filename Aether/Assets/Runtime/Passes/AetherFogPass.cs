@@ -92,6 +92,7 @@ namespace Aether
 
         public void OnSceneLoad (Scene scene, LoadSceneMode mode)
         {
+            Dispose();
             SetupCamera();
             SetupLights();
             SetupFogVolumes();
@@ -103,8 +104,8 @@ namespace Aether
             lightDataBuffer?.Release();
             fogDataBuffer?.Release();
 
-            if(fogTexture != null) fogTexture.Release();
-            if(previousFogTexture != null) fogTexture.Release();
+            Object.DestroyImmediate(fogTexture);
+            Object.DestroyImmediate(previousFogTexture);
 
             Debug.Log("Disposing!");
 
@@ -125,12 +126,17 @@ namespace Aether
                 dimension = TextureDimension.Tex3D,
                 enableRandomWrite = true,
             };
+            
+            Object.DestroyImmediate(previousFogTexture);
+            Object.DestroyImmediate(fogTexture);
 
             previousFogTexture = new(desc);
             previousFogTexture.Create();
+            previousFogTexture.name = "previousFogTexture";
 
             fogTexture = new(desc);
             fogTexture.Create();
+            fogTexture.name = "fogTexture";
         }
 
         //* Camera
@@ -212,45 +218,43 @@ namespace Aether
         {
             var kernel = FogCompute.FindKernel("ComputeFog");
 
-            FogCompute.SetTexture(kernel, "previousFogTexture", previousFogTexture);
-
-            FogCompute.SetTexture(kernel, "fogTexture", fogTexture);
-            FogCompute.SetVector("fogTextureResolution", new(Settings.VolumeResolution.x, Settings.VolumeResolution.y, Settings.VolumeResolution.z));
-
-            FogCompute.SetBuffer(kernel, "lightData", lightDataBuffer);
-            FogCompute.SetInt("lightDataLength", lightData.Length);
-
-            FogCompute.SetBuffer(kernel, "fogData", fogDataBuffer);
-            FogCompute.SetInt("fogDataLength", fogData.Length);
-
-            FogCompute.SetBuffer(kernel, "cameraData", cameraDataBuffer);
-
-            FogCompute.SetFloat("time", Time.unscaledTime);
-            FogCompute.SetFloat("jitterDistance", Settings.JitterDistance);
-            FogCompute.SetFloat("jitterScale", Settings.JitterScale);
-            FogCompute.SetFloat("temporalStrength", Settings.TemporalStrength);
-
-            //FogCompute.SetInt("sampleCount", Settings.SampleCount);
-
             FogCompute.SetBool("useMainShadowTexture", AetherShadowPass.UseMainShadowTexture);
-            
-            FogCompute.SetTexture(kernel, "mainShadowTexture", (Texture)AetherShadowPass.MainShadowTexture ?? Texture2D.whiteTexture);
-
-            //FogCompute.SetTexture(kernel, "additionalShadowTexture", AetherShadowPass.AdditionalShadowTexture);
-
-            FogCompute.SetTexture(kernel, "blueNoise", blueNoise);
-            FogCompute.SetFloat("blueNoiseSize", blueNoise.width);
 
             int3 dispatchSize = GetDispatchSize(FogCompute, kernel, Settings.VolumeResolution);
 
             CommandBuffer cmd = CommandBufferPool.Get();
 
+            cmd.SetExecutionFlags(CommandBufferExecutionFlags.AsyncCompute);
+
             using (new ProfilingScope(cmd, new ProfilingSampler("Aether Fog Compute")))
             {
+                cmd.SetComputeTextureParam(FogCompute, kernel, "previousFogTexture", previousFogTexture);
+                cmd.SetComputeTextureParam(FogCompute, kernel, "fogTexture", fogTexture);
+
+                cmd.SetComputeVectorParam(FogCompute, "fogTextureResolution", new(Settings.VolumeResolution.x, Settings.VolumeResolution.y, Settings.VolumeResolution.z));
+
+                cmd.SetComputeBufferParam(FogCompute, kernel, "lightData", lightDataBuffer);
+                cmd.SetComputeIntParam(FogCompute, "lightDataLength", lightData.Length);
+
+                cmd.SetComputeBufferParam(FogCompute, kernel, "fogData", fogDataBuffer);
+                cmd.SetComputeIntParam(FogCompute, "fogDataLength", fogData.Length);
+
+                cmd.SetComputeBufferParam(FogCompute, kernel, "cameraData", cameraDataBuffer);
+
+                cmd.SetComputeFloatParam(FogCompute, "time", Time.unscaledTime);
+                cmd.SetComputeFloatParam(FogCompute, "jitterDistance", Settings.JitterDistance);
+                cmd.SetComputeFloatParam(FogCompute, "jitterScale", Settings.JitterScale);
+                cmd.SetComputeFloatParam(FogCompute, "temporalStrength", Settings.TemporalStrength);
+
+                cmd.SetComputeTextureParam(FogCompute, kernel, "mainShadowTexture", (Texture)AetherShadowPass.MainShadowTexture ?? Texture2D.whiteTexture);
+
+                cmd.SetComputeTextureParam(FogCompute, kernel, "blueNoise", blueNoise);
+                cmd.SetComputeFloatParam(FogCompute, "blueNoiseSize", blueNoise.width);
+
                 cmd.DispatchCompute(FogCompute, kernel, dispatchSize.x, dispatchSize.y, dispatchSize.z);
             }
 
-            context.ExecuteCommandBuffer(cmd);
+            context.ExecuteCommandBufferAsync(cmd, ComputeQueueType.Background);
             cmd.Clear();
 
             CommandBufferPool.Release(cmd);
@@ -263,20 +267,22 @@ namespace Aether
         {
             var kernel = RaymarchCompute.FindKernel("RaymarchFog");
 
-            RaymarchCompute.SetTexture(kernel, "raymarchTexture", fogTexture);
-
-            RaymarchCompute.SetInt("depthResolution", Settings.VolumeResolution.z);
-
             int3 dispatchSize = GetDispatchSize(RaymarchCompute, kernel, Settings.VolumeResolution);
 
             CommandBuffer cmd = CommandBufferPool.Get();
 
+            cmd.SetExecutionFlags(CommandBufferExecutionFlags.AsyncCompute);
+
             using (new ProfilingScope(cmd, new ProfilingSampler("Aether Raymarch Compute")))
             {
+                
+                cmd.SetComputeTextureParam(RaymarchCompute, kernel, "raymarchTexture", fogTexture);
+                cmd.SetComputeIntParam(RaymarchCompute, "depthResolution", Settings.VolumeResolution.z);
+
                 cmd.DispatchCompute(RaymarchCompute, kernel, dispatchSize.x, dispatchSize.y, 1);
             }
 
-            context.ExecuteCommandBuffer(cmd);
+            context.ExecuteCommandBufferAsync(cmd, ComputeQueueType.Background);
             cmd.Clear();
 
             CommandBufferPool.Release(cmd);

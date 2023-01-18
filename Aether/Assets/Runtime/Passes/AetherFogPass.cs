@@ -100,12 +100,10 @@ namespace Aether
 
         public void Dispose ()
         {
-            cameraDataBuffer?.Release();
-            lightDataBuffer?.Release();
-            fogDataBuffer?.Release();
-
-            Object.DestroyImmediate(fogTexture);
-            Object.DestroyImmediate(previousFogTexture);
+            DisposeTextures();
+            DisposeCamera();
+            DisposeLights();
+            DisposeFogVolumes();
 
             Debug.Log("Disposing!");
 
@@ -127,8 +125,7 @@ namespace Aether
                 enableRandomWrite = true,
             };
             
-            Object.DestroyImmediate(previousFogTexture);
-            Object.DestroyImmediate(fogTexture);
+            DisposeTextures();
 
             previousFogTexture = new(desc);
             previousFogTexture.Create();
@@ -137,6 +134,14 @@ namespace Aether
             fogTexture = new(desc);
             fogTexture.Create();
             fogTexture.name = "fogTexture";
+        }
+        public void DisposeTextures ()
+        {
+            previousFogTexture?.Release();
+            fogTexture?.Release();
+
+            Object.DestroyImmediate(previousFogTexture);
+            Object.DestroyImmediate(fogTexture);
         }
 
         //* Camera
@@ -153,11 +158,12 @@ namespace Aether
 
             return true;
         }
-        public void SetupCamera()
+        public void SetupCamera ()
         {
-            cameraDataBuffer?.Release();
+            DisposeCamera();
             cameraDataBuffer = new(cameraData.Length, CameraData.SIZE);
         }
+        public void DisposeCamera() => cameraDataBuffer?.Release();
 
         //* Lights
         public bool UpdateLights ()
@@ -182,9 +188,11 @@ namespace Aether
             lightData = new LightData[lights.Length];
             if(lightData.Length == 0) return;
 
-            lightDataBuffer?.Release();
+            DisposeLights();
+            
             lightDataBuffer = new(lightData.Length, LightData.SIZE);
         }
+        public void DisposeLights() => lightDataBuffer?.Release();
 
         //* Fog Volumes
         public bool UpdateFogVolumes ()
@@ -209,9 +217,11 @@ namespace Aether
             fogData = new FogData[fogVolumes.Length];
             if(fogData.Length == 0) return;
 
-            fogDataBuffer?.Release();
+            DisposeFogVolumes();
+            
             fogDataBuffer = new(fogData.Length, FogData.SIZE);
         }
+        public void DisposeFogVolumes() => fogDataBuffer?.Release();
 
         //* Fog Compute
         public bool UpdateFogCompute (ScriptableRenderContext context)

@@ -137,11 +137,18 @@ namespace Aether
         }
         public void DisposeTextures ()
         {
-            previousFogTexture?.Release();
-            fogTexture?.Release();
-
-            Object.DestroyImmediate(previousFogTexture);
-            Object.DestroyImmediate(fogTexture);
+            
+            if(previousFogTexture != null)
+            {
+                previousFogTexture.Release();
+                Object.DestroyImmediate(previousFogTexture);
+            }
+            
+            if(fogTexture != null)
+            {
+                fogTexture.Release();
+                Object.DestroyImmediate(fogTexture);
+            }
         }
 
         //* Camera
